@@ -3,8 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1db954">
   <title>🎧 Descubrí Música</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* estilos mínimos para que se vea */
+    .card { display:flex; gap:10px; padding:8px; border:1px solid #ddd; margin:8px 0; align-items:center; }
+    .card img{ width:80px; height:80px; object-fit:cover; }
+    .card-content{ flex:1; }
+    .tag-genero{ background:#eee; padding:2px 6px; border-radius:4px; font-size:12px; margin-right:6px; display:inline-block; }
+    .meta { color:#666; font-size:12px; }
+  </style>
 </head>
 <body>
   <header>WebMusic</header>
@@ -17,19 +27,24 @@
       <option value="jazz">Jazz</option>
       <option value="electronic">Electrónica</option>
       <option value="hip hop">Hip-Hop</option>
+      <option value="rap">Rap</option>
       <option value="reggae">Reggae</option>
       <option value="punk">Punk</option>
       <option value="metal">Metal</option>
-      <option value="black metal">Black Metal</option>
-      <option value="death metal">Death Metal</option>
+      <option value="grunge">Grunge</option>
+      <option value="disco">Disco</option>
+      <option value="dance">Dance</option>
+      <option value="country">Country</option>
       <option value="classical">Clásica</option>
       <option value="blues">Blues</option>
       <option value="trap">Trap</option>
-      <option value="r&b">R&B</option>
+      <option value="r&b">R&amp;B</option>
+      <option value="soul">Soul</option>
       <option value="folk">Folk</option>
       <option value="ambient">Ambient</option>
       <option value="flamenco">Flamenco</option>
       <option value="tango">Tango</option>
+      <option value="salsa">Salsa</option>
       <option value="cumbia">Cumbia</option>
     </select>
 
@@ -70,6 +85,359 @@
     <div class="results" id="results"></div>
   </main>
 
-  <script src="main.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // --- Subgéneros (poblador) ---
+  const subgenerosPorGenero = {
+    "metal": [
+      "metal alternativo","black metal","death metal","deathcore","doom metal","drone metal",
+      "folk metal","freak metal","funk metal","glam metal","goregrind","metal gótico",
+      "grindcore","groove metal","metal industrial","kawaii metal","downer metal",
+      "metal brutal","metal extremo","melódico","melodic death metal","satanic metal",
+      "teutonic metal","traditional metal","metalcore","noisegrind","nu metal","post-metal",
+      "power metal","metal progresivo","proto-metal","rap metal","metal sinfónico",
+      "sludge metal","southern metal","speed metal","thrash metal","trash metal","trap metal",
+      "unblack metal"
+    ],
+    "rock": ["garage rock","indie rock","progressive rock","shoegaze","post-rock","alternative rock","grunge"],
+    "pop": ["synthpop","dance pop","electropop","teen pop"],
+    "jazz": ["bebop","smooth jazz","fusion","acid jazz","swing","cool jazz"],
+    "electronic": ["house","techno","ambient","synthwave","drum & bass","breakbeat","phonk","idm"],
+    "hip hop": ["drill","boom bap","lo-fi","conscious rap","old school"],
+    "rap": ["trap rap","gangsta rap","boom bap","cloud rap","phonk"],
+    "reggae": ["roots reggae","dub","ska","dancehall"],
+    "punk": ["hardcore punk","pop punk","post-punk"],
+    "folk": ["folk psicodélico","neo folk","americana","british folk"],
+    "r&b": ["neo soul","contemporary r&b","quiet storm"],
+    "soul": ["motown","deep soul","neo soul"],
+    "disco": ["nu-disco"],
+    "dance": ["edm","progressive house","electronica"],
+    "country": ["country pop","alt-country","bluegrass"],
+    "grunge": ["Seattle grunge","post-grunge"],
+    "blues": ["delta blues","electric blues"],
+    "salsa": ["salsa clásica","salsa dura","salsa romántica"],
+    "cumbia": ["cumbia villera","cumbia pop"],
+    "trap": ["trap latino","trap metal"],
+    "flamenco": ["flamenco fusion","nuevo flamenco"],
+    "tango": ["nuevo tango"]
+  };
+
+  const selectGenre = document.getElementById("genre");
+  const selectSubgenre = document.getElementById("subgenre");
+  const selectRegion = document.getElementById("region");
+  const selectDecade = document.getElementById("decade");
+  const btnSearch = document.getElementById("btn-search");
+  const btnMore = document.getElementById("btn-more");
+  const contenedor = document.getElementById("results");
+
+  // inicial subgenre
+  function resetSubgenre(){
+    selectSubgenre.innerHTML = '<option value="any">Cualquiera</option>';
+    selectSubgenre.disabled = true;
+    selectSubgenre.style.display = "none";
+  }
+  resetSubgenre();
+
+  selectGenre.addEventListener('change', () => {
+    const g = (selectGenre.value || "").toLowerCase().trim();
+    resetSubgenre();
+    if (g === "any" || !subgenerosPorGenero[g]) return;
+    subgenerosPorGenero[g].forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.toLowerCase();
+      opt.textContent = s;
+      selectSubgenre.appendChild(opt);
+    });
+    selectSubgenre.disabled = false;
+    selectSubgenre.style.display = "inline-block";
+  });
+
+  // --- Lógica de búsqueda y render ---
+  const API_KEY_LASTFM = "92c19e9a34d731629e8f792a656e4a06";
+  const regiones = {
+    latin: ["Argentina","México","Chile","Colombia","España","Perú"],
+    english: ["Estados Unidos","Reino Unido","Australia","Canadá"],
+    french: ["Francia","Bélgica"],
+    german: ["Alemania","Austria"],
+    japanese: ["Japón"],
+    korean: ["Corea del Sur"],
+    indian: ["India"]
+  };
+
+  const LIMIT_FETCH = 20;
+  const MAX_RENDER = 5;
+  const mostradosSet = new Set();
+  let offsetActual = 0;
+
+  btnMore.disabled = true;
+
+  function sanitizeId(name){ return (name||'').replace(/\s+/g,'-').replace(/[^a-z0-9\-]/gi,'').toLowerCase(); }
+  function normalize(s){ return (s||'').toLowerCase().replace(/[^a-z0-9\s]/gi,'').trim(); }
+  function shuffleArray(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
+  function artistMatchesGenre(artist, genreTokens){
+    if (!genreTokens || genreTokens.length===0) return true;
+    const tags = (artist.tags||[]).map(t=>normalize(t.name));
+    if (tags.some(t=> genreTokens.some(g=> t.includes(g)))) return true;
+    const aliases = (artist.aliases||[]).map(a=>normalize(a.name));
+    if (aliases.some(a=> genreTokens.some(g=> a.includes(g)))) return true;
+    const name = normalize(artist.name||'');
+    if (genreTokens.some(g=> name.includes(g))) return true;
+    const dis = normalize(artist.disambiguation||'');
+    if (genreTokens.some(g=> dis.includes(g))) return true;
+    return false;
+  }
+
+  // cuando todo es "Cualquiera": buscar variedad pero devolver también el género inferido usado en la búsqueda
+  async function buscarVariedadGlobal(maxResults = MAX_RENDER) {
+    const generosPool = ["rock","pop","metal","jazz","electronic","hip hop","rap","reggae","punk","r&b","folk","ambient","flamenco","tango","cumbia","soul","indie","latin","disco","funk"];
+    shuffleArray(generosPool);
+    const attempts = Math.min(10, generosPool.length);
+    const fetches = [];
+    for (let i=0;i<attempts;i++){
+      const g = generosPool[i];
+      const off = Math.floor(Math.random()*200);
+      const url = 'https://musicbrainz.org/ws/2/artist?query=' + encodeURIComponent(`tag:"${g}"`) + `&fmt=json&limit=1&offset=${off}`;
+      fetches.push(fetch(url).then(r=> r.ok ? r.json().catch(()=>null) : null).catch(()=>null).then(data => ({ data, genre: g })));
+    }
+
+    const responses = await Promise.all(fetches);
+    const resultados = [];
+    const seen = new Set();
+    for (const resp of responses) {
+      if (!resp || !resp.data || !resp.data.artists) continue;
+      const a = resp.data.artists[0];
+      if (!a || !a.id) continue;
+      if (mostradosSet.has(a.id)) continue;
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      // devolvemos objeto con artista y género inferido
+      resultados.push({ artist: a, inferredGenre: resp.genre });
+      if (resultados.length >= maxResults) break;
+    }
+    return resultados;
+  }
+
+  function elegirGeneroAleatorio(){
+    const generos = ["rock","pop","metal","jazz","electronic","hip hop","rap","reggae","punk","r&b","folk","ambient","flamenco","tango","cumbia","soul","indie","latin","disco"];
+    return generos[Math.floor(Math.random()*generos.length)];
+  }
+
+  function onFilterChange(){
+    offsetActual = 0;
+    btnSearch.disabled = false;
+    btnMore.disabled = true;
+  }
+  selectGenre.addEventListener('change', onFilterChange);
+  selectRegion.addEventListener('change', onFilterChange);
+  selectDecade.addEventListener('change', onFilterChange);
+  selectSubgenre && selectSubgenre.addEventListener('change', onFilterChange);
+
+  btnSearch.addEventListener('click', ()=> buscarMusica(false));
+  btnMore.addEventListener('click', ()=> buscarMusica(true));
+
+  async function buscarMusica(refresh=false){
+    const genreSel = selectGenre.value;
+    const regionSel = selectRegion.value;
+    const decadeSel = selectDecade.value;
+    const subSel = (selectSubgenre && selectSubgenre.value) ? selectSubgenre.value : 'any';
+
+    if (refresh) offsetActual += LIMIT_FETCH;
+    else { offsetActual = 0; mostradosSet.clear(); }
+
+    contenedor.innerHTML = "<p>Buscando artistas...</p>";
+
+    const todoAny = genreSel==='any' && regionSel==='any' && decadeSel==='any' && subSel==='any';
+
+    try {
+      let artistas = [];
+
+      if (todoAny) {
+        // obtenemos wrappers { artist, inferredGenre }
+        artistas = await buscarVariedadGlobal(MAX_RENDER);
+        if (!artistas.length) {
+          contenedor.innerHTML = "<p>No se encontraron artistas (variedad global).</p>";
+          return;
+        }
+      } else {
+        // búsqueda por MusicBrainz (como antes)
+        let generoElegido;
+        if (subSel && subSel !== "any") generoElegido = subSel;
+        else if (genreSel !== "any") generoElegido = genreSel;
+        else generoElegido = elegirGeneroAleatorio();
+
+        const regionKey = regionSel === "any" ? null : regionSel;
+        const paises = regionKey ? (regiones[regionKey] || []) : Object.values(regiones).flat();
+        if (!paises || paises.length === 0) {
+          contenedor.innerHTML = "<p>Región no soportada.</p>";
+          return;
+        }
+
+        const paisesQuery = paises.map(p => `area:"${p}"`).join(" OR ");
+        const queryTag = `tag:"${generoElegido}"`;
+        let query = queryTag;
+        if (paisesQuery) query += ` AND (${paisesQuery})`;
+        const url = `https://musicbrainz.org/ws/2/artist?query=${encodeURIComponent(query)}&fmt=json&limit=${LIMIT_FETCH}&offset=${offsetActual}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Error en MusicBrainz: ' + res.status);
+        const data = await res.json();
+        if (!data.artists || data.artists.length === 0) {
+          contenedor.innerHTML = "<p>No se encontraron artistas.</p>";
+          return;
+        }
+
+        const tokens = generoElegido.split(/\s+|&/).map(t=>t.toLowerCase().replace(/[^a-z0-9]/g,'')).filter(Boolean);
+        const candidatos = data.artists.filter(a => artistMatchesGenre(a, tokens));
+        artistas = candidatos.length ? candidatos.slice(0, MAX_RENDER) : data.artists.slice(0, MAX_RENDER);
+        artistas = artistas.filter(a => !mostradosSet.has(a.id));
+      }
+
+      if (!refresh) contenedor.innerHTML = "";
+
+      let añadidos = 0;
+      for (const item of artistas) {
+        // item puede ser wrapper {artist,inferredGenre} o artista directo (MusicBrainz)
+        const artistaObj = item.artist || item;
+        const id = artistaObj.id;
+        if (!id) continue;
+        if (mostradosSet.has(id)) continue;
+
+        const generoParaMostrar = (item.inferredGenre) ? item.inferredGenre : ( (subSel !== 'any') ? subSel : (genreSel !== 'any' ? genreSel : null) );
+        renderizarArtista(item, generoParaMostrar);
+        mostradosSet.add(id);
+        añadidos++;
+        if (añadidos >= MAX_RENDER) break;
+      }
+
+      if (!refresh) {
+        btnSearch.disabled = true;
+        btnMore.disabled = false;
+      } else {
+        btnMore.disabled = false;
+      }
+
+    } catch (e) {
+      console.error(e);
+      contenedor.innerHTML = "<p>Error al buscar artistas.</p>";
+    }
+  }
+
+  function renderizarArtista(item, genero) {
+    const artista = item.artist || item;
+    const inferred = item.inferredGenre || null;
+
+    const card = document.createElement("div");
+    card.className = "card";
+
+    const img = document.createElement("img");
+    img.src = "https://via.placeholder.com/100";
+    img.alt = artista.name || "Artista";
+
+    const content = document.createElement("div");
+    content.className = "card-content";
+
+    const titleRow = document.createElement("div");
+    if (genero || inferred) {
+      const tag = document.createElement("span");
+      tag.className = "tag-genero";
+      tag.textContent = (genero || inferred).toString();
+      titleRow.appendChild(tag);
+    }
+
+    const title = document.createElement("h3");
+    title.style.display = "inline";
+    title.style.marginLeft = "6px";
+    title.textContent = artista.name || "Desconocido";
+    titleRow.appendChild(title);
+
+    const inicio = artista["life-span"]?.begin || "Desconocido";
+    const regionName = artista.area?.name || artista['begin-area']?.name || artista.country || "Desconocido";
+    const info = document.createElement("div");
+    info.className = "meta";
+    info.textContent = `Región: ${regionName} | Inicio: ${inicio}`;
+
+    const btnInfo = document.createElement("button");
+    btnInfo.type = "button";
+    btnInfo.textContent = "Más información";
+    const artistName = artista.name || "";
+    const songsId = "songs-" + sanitizeId(artistName);
+    btnInfo.addEventListener('click', ()=> mostrarCanciones(artistName));
+
+    const ul = document.createElement("ul");
+    ul.className = "songs";
+    ul.id = songsId;
+
+    content.appendChild(titleRow);
+    content.appendChild(info);
+    content.appendChild(document.createElement("br"));
+    content.appendChild(btnInfo);
+    content.appendChild(ul);
+
+    card.appendChild(img);
+    card.appendChild(content);
+    contenedor.appendChild(card);
+
+    cargarFotoArtista(artistName, img);
+  }
+
+  async function cargarFotoArtista(nombreArtista, imgElement){
+    if (!nombreArtista) return;
+
+    try {
+      const localUrl = 'http://localhost:3000/api/spotify/artists?q=' + encodeURIComponent(nombreArtista) + '&limit=1';
+      const localRes = await fetch(localUrl);
+      if (localRes.ok){
+        const localData = await localRes.json().catch(()=>null);
+        const item = (localData && localData.artists && localData.artists[0]) ? localData.artists[0] : null;
+        if (item && item.images && item.images.length) { imgElement.src = item.images[0].url; return; }
+      }
+    } catch(e){
+      // proxy no disponible
+    }
+
+    try {
+      const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(nombreArtista)}&prop=pageimages&format=json&pithumbsize=200&origin=*`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      const pages = data.query?.pages;
+      if (!pages) return;
+      const page = Object.values(pages)[0];
+      if (page?.thumbnail?.source) imgElement.src = page.thumbnail.source;
+    } catch(e){
+      // placeholder queda
+    }
+  }
+
+  async function mostrarCanciones(nombreArtista){
+    const id = "songs-" + sanitizeId(nombreArtista);
+    const lista = document.getElementById(id);
+    if (!lista) return;
+    lista.innerHTML = "<li>Cargando canciones...</li>";
+
+    try {
+      const limpio = nombreArtista.replace(/\s*\(.*?\)\s*/g, '').trim();
+      const url = `https://corsproxy.io/?https://ws.audioscrobbler.com/2.0/?method=artist.gettoptracks&artist=${encodeURIComponent(limpio)}&api_key=${API_KEY_LASTFM}&format=json`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Error LastFM');
+      const data = await res.json();
+      const tracks = data.toptracks?.track?.slice(0, 3);
+      if (!tracks || tracks.length === 0) {
+        lista.innerHTML = "<li>No se encontraron canciones.</li>";
+        return;
+      }
+      lista.innerHTML = tracks.map(t => {
+        const plays = t.playcount ? `${Math.round(t.playcount/1000)}k` : "—";
+        const youtubeUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(limpio + ' ' + t.name)}`;
+        return `<li>${t.name} <small>(${plays} reproducciones)</small> - <a href="${youtubeUrl}" target="_blank" rel="noopener">🎧 Escuchar</a></li>`;
+      }).join("");
+    } catch (e) {
+      console.error(e);
+      lista.innerHTML = "<li>Error al obtener canciones.</li>";
+    }
+  }
+
+});
+</script>
 </body>
 </html>
