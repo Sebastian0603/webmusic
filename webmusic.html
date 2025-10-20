@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎧 Descubrí Música</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>WebMusic</header>
+  <main>
+    <label for="genre">Género</label>
+    <select id="genre">
+      <option value="any">Cualquiera</option>
+      <option value="rock">Rock</option>
+      <option value="pop">Pop</option>
+      <option value="jazz">Jazz</option>
+      <option value="electronic">Electrónica</option>
+      <option value="hip hop">Hip-Hop</option>
+      <option value="reggae">Reggae</option>
+      <option value="punk">Punk</option>
+      <option value="metal">Metal</option>
+      <option value="black metal">Black Metal</option>
+      <option value="death metal">Death Metal</option>
+      <option value="classical">Clásica</option>
+      <option value="blues">Blues</option>
+      <option value="trap">Trap</option>
+      <option value="r&b">R&B</option>
+      <option value="folk">Folk</option>
+      <option value="ambient">Ambient</option>
+      <option value="flamenco">Flamenco</option>
+      <option value="tango">Tango</option>
+      <option value="cumbia">Cumbia</option>
+    </select>
+
+    <label for="subgenre">Subgénero</label>
+    <select id="subgenre">
+      <option value="any">Cualquiera</option>
+    </select>
+
+    <label for="region">Región / Idioma</label>
+    <select id="region">
+      <option value="any">Cualquiera</option>
+      <option value="latin">Latinoamérica / Español</option>
+      <option value="english">Inglés</option>
+      <option value="french">Francés</option>
+      <option value="german">Alemán</option>
+      <option value="japanese">Japonés</option>
+      <option value="korean">Coreano</option>
+      <option value="indian">Indio</option>
+    </select>
+
+    <label for="decade">Década</label>
+    <select id="decade">
+      <option value="any">Cualquiera</option>
+      <option value="1960">1960s</option>
+      <option value="1970">1970s</option>
+      <option value="1980">1980s</option>
+      <option value="1990">1990s</option>
+      <option value="2000">2000s</option>
+      <option value="2010">2010s</option>
+      <option value="2020">2020s</option>
+    </select>
+
+    <div style="margin-top:10px">
+      <button type="button" id="btn-search">Descubrir</button>
+      <button type="button" id="btn-more">Cargar otros artistas</button>
+    </div>
+
+    <div class="results" id="results"></div>
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>

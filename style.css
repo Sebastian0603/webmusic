@@ -1,0 +1,151 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #0e0e0e;
+  color: #f0f0f0;
+}
+
+header {
+  background: linear-gradient(90deg, #1db954, #1ed760);
+  padding: 1.2rem 2rem;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+main {
+  padding: 2rem;
+  max-width: 900px;
+  margin: auto;
+}
+
+label {
+  display: block;
+  margin-top: 1.2rem;
+  font-weight: 600;
+  color: #ccc;
+}
+
+select, button {
+  width: 100%;
+  padding: 0.7rem;
+  margin-top: 0.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: #1a1a1a;
+  color: #f0f0f0;
+}
+
+select:focus, button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #1db954;
+}
+
+button {
+  background-color: #1db954;
+  color: #fff;
+  margin-top: 1rem;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+button:hover {
+  background-color: #17a84b;
+  transform: scale(1.02);
+}
+
+.results {
+  margin-top: 2rem;
+}
+
+.card {
+  background-color: #1a1a1a;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 10px;
+  display: flex;
+  gap: 1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  transition: transform 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+
+.card img {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid #1db954;
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  color: #ffff;
+}
+
+.card small {
+  color: #aaa;
+}
+
+.songs {
+  margin-top: 0.5rem;
+  padding-left: 1rem;
+}
+
+.songs li {
+  margin-bottom: 0.4rem;
+  color: #ddd;
+}
+
+a {
+  color: #1ed760;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+main {
+  padding: 2rem;
+  max-width: 900px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+label {
+  width: 300px;
+  text-align: left;
+}
+
+select, button {
+  width: 300px;
+  max-width: 90%;
+}
+button {
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: bold;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+.tag-genero {
+  background-color: #1db954;
+  color: #fff;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
